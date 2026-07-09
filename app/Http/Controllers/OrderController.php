@@ -7,7 +7,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; // Wajib import DB
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
 
@@ -37,7 +38,7 @@ class OrderController extends Controller
 
         // SKENARIO B: Checkout dari Keranjang
         else {
-            $carts = Cart::where('user_id', auth()->id())->get();
+            $carts = Cart::query()->where('user_id', Auth::id())->get();
 
             if ($carts->isEmpty()) {
                 return redirect()->route('home')->with('error', 'Keranjang kosong!');
@@ -69,7 +70,7 @@ class OrderController extends Controller
         try {
             // 2. Persiapan Data Barang & Hitung Subtotal
             if ($request->is_cart == 'true') {
-                $carts = Cart::where('user_id', auth()->id())->with('product')->get(); // Eager load product
+                $carts = Cart::query()->where('user_id', Auth::id())->with('product')->get(); // Eager load product
                 $items = $carts;
 
                 // Pastikan cart tidak kosong
@@ -109,13 +110,14 @@ class OrderController extends Controller
 
             // 4. Simpan Order (Status Awal: Unpaid & Pending)
             $order = Order::create([
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
+                'recipient_name' => $request->recipient_name, // <-- Simpan ke kolom baru
                 'total_price' => $grandTotal,
                 'status' => 'Unpaid',
                 'delivery_status' => 'pending',
                 'product_id' => $productIdHead,
                 'quantity' => $qtyHead,
-                'shipping_address' => $request->address,
+                'shipping_address' => $request->address, // <-- Alamat kembali bersih
                 'shipping_courier' => $request->courier,
                 'shipping_cost' => $shippingCost,
                 'tax_fee' => $taxFee,
@@ -155,7 +157,7 @@ class OrderController extends Controller
 
             // 6. Hapus Keranjang (Jika beli dari keranjang)
             if ($request->is_cart == 'true') {
-                Cart::where('user_id', auth()->id())->delete();
+                Cart::query()->where('user_id', Auth::id())->delete();
             }
 
             // 7. Panggil Midtrans
@@ -180,7 +182,7 @@ class OrderController extends Controller
     public function history(Request $request)
     {
         // A. Logika Hapus Otomatis (Timeout 1 Menit) & KEMBALIKAN STOK
-        $expiredOrders = Order::where('status', 'Unpaid')
+        $expiredOrders = Order::query()->where('status', 'Unpaid')
             ->where('created_at', '<', now()->subMinute())
             ->with('orderItems') // Load itemnya
             ->get();
@@ -188,30 +190,14 @@ class OrderController extends Controller
         foreach ($expiredOrders as $expired) {
             // KEMBALIKAN STOK BARANG (Restock)
             foreach ($expired->orderItems as $item) {
-                Product::where('id', $item->product_id)->increment('stock', $item->quantity);
+                Product::query()->where('id', $item->product_id)->increment('stock', $item->quantity);
             }
             // Baru hapus ordernya
             $expired->delete();
         }
 
-        // B. Cek Laporan Sukses dari Midtrans
-        if ($request->has('transaction_status') && $request->transaction_status == 'settlement') {
-            $parts = explode('-', $request->order_id);
-            if (count($parts) >= 2) {
-                $order = Order::find($parts[1]);
-                if ($order && $order->status == 'Unpaid') {
-                    $order->update([
-                        'status' => 'Paid',
-                        'delivery_status' => 'processing',
-                    ]);
-
-                    return redirect()->route('history')->with('success', 'Pembayaran Berhasil! Pesanan sedang dikemas.');
-                }
-            }
-        }
-
-        // C. Tampilkan Data
-        $orders = Order::where('user_id', auth()->id())
+        // B. Tampilkan Data
+        $orders = Order::query()->where('user_id', Auth::id())
             ->with('orderItems.product')
             ->latest()
             ->get();
@@ -222,7 +208,7 @@ class OrderController extends Controller
     // =================================================
     // 4. MANUAL PAID (Route Khusus Demo)
     // =================================================
-    public function markAsPaid($id)
+    public function markAsPaid(string $id)
     {
         $order = Order::findOrFail($id);
 
@@ -237,7 +223,7 @@ class OrderController extends Controller
     // ==========================================================
     // 5. SIMULASI KIRIM BARANG (Tombol Admin)
     // ==========================================================
-    public function markAsShipped($id)
+    public function markAsShipped(string $id)
     {
         $order = Order::findOrFail($id);
 
@@ -253,7 +239,7 @@ class OrderController extends Controller
     // ==========================================================
     // 6. TERIMA PESANAN (Tombol User)
     // ==========================================================
-    public function receiveOrder($id)
+    public function receiveOrder(string $id)
     {
         $order = Order::findOrFail($id);
 
@@ -264,6 +250,45 @@ class OrderController extends Controller
         }
 
         return redirect()->back()->with('error', 'Barang belum dikirim, tidak bisa diterima.');
+    }
+
+    // =================================================
+    // 7. WEBHOOK / CALLBACK DARI MIDTRANS (BACKGROUND)
+    // =================================================
+    public function callback(Request $request)
+    {
+        $serverKey = config('services.midtrans.server_key');
+
+        // Buat enkripsi verifikasi SHA512 sesuai standar Midtrans
+        $hashed = hash('sha512', $request->order_id.$request->status_code.$request->gross_amount.$serverKey);
+
+        if ($hashed == $request->signature_key) {
+            $parts = explode('-', $request->order_id);
+            if (count($parts) >= 2) {
+                // Ambil ID order utama dari susunan string parameter order_id
+                $order = Order::find($parts[1]);
+
+                if ($order) {
+                    if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
+                        $order->update([
+                            'status' => 'Paid',
+                            'delivery_status' => 'processing',
+                        ]);
+                    } elseif (in_array($request->transaction_status, ['cancel', 'deny', 'expire'])) {
+                        $order->update(['status' => 'Failed']);
+
+                        // Kembalikan stok produk jika transaksi gagal/hangus di sistem Midtrans
+                        foreach ($order->orderItems as $item) {
+                            Product::query()->where('id', $item->product_id)->increment('stock', $item->quantity);
+                        }
+                    } elseif ($request->transaction_status == 'pending') {
+                        $order->update(['status' => 'Unpaid']);
+                    }
+                }
+            }
+        }
+
+        return response()->json(['message' => 'Callback diterima']);
     }
 
     // =================================================
@@ -282,8 +307,8 @@ class OrderController extends Controller
                 'gross_amount' => (int) $order->total_price,
             ],
             'customer_details' => [
-                'first_name' => auth()->user()->name,
-                'email' => auth()->user()->email,
+                'first_name' => Auth::user()->name,
+                'email' => Auth::user()->email,
                 'billing_address' => [
                     'address' => $order->shipping_address,
                 ],

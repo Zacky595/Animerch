@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ReviewController extends Controller
 {
@@ -18,7 +19,7 @@ class ReviewController extends Controller
 
         // CEK DUPLIKAT SPESIFIK ORDER INI
         // "Apakah user ini, sudah mereview produk ini, DI ORDER INI?"
-        $existingReview = Review::where('user_id', auth()->id())
+        $existingReview = Review::where('user_id', Auth::id())
             ->where('product_id', $request->product_id)
             ->where('order_id', $request->order_id) // <--- KUNCI PERBAIKANNYA
             ->first();
@@ -28,7 +29,7 @@ class ReviewController extends Controller
         }
 
         Review::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'product_id' => $request->product_id,
             'order_id' => $request->order_id, // Simpan ID Order
             'rating' => $request->rating,

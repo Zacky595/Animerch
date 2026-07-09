@@ -26,20 +26,41 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        // LOGIKA UPLOAD DAN VALIDASI FOTO PROFIL (MAX 10MB)
+        $request->validate([
+            // max:10240
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:10240'],
+        ], [
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+            'image.max' => 'Ukuran gambar tidak boleh lebih dari 10MB.',
+            'image.image' => 'File harus berupa gambar.',
+        ]);
+
+        if ($request->hasFile('image')) {
+            // Hapus foto lama dari server jika user sudah punya foto sebelumnya
+            if ($user->image && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->image)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->image);
+            }
+
+            // Simpan foto baru ke folder storage/app/public/profile_images
+            $imagePath = $request->file('image')->store('profile_images', 'public');
+            $user->image = $imagePath;
+        }
+
+        $user->save();
+
+        // Kembali ke halaman sebelumnya dengan pesan sukses
+        return Redirect::back()->with('success', 'Profil berhasil diperbarui!');
     }
 
-    /**
-     * Delete the user's account.
-     */
+    // Delete the user's account
     public function destroy(Request $request): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [

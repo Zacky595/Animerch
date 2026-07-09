@@ -108,6 +108,9 @@
                                 <img id="preview-img"
                                     class="w-16 h-16 rounded-full object-cover border-2 border-blue-500">
                             </div>
+                            @error('image')
+                                <p class="text-red-500 text-xs font-bold mt-2">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <button type="submit"
@@ -122,6 +125,19 @@
 
     <script>
         function previewImage(event) {
+            const file = event.target.files[0];
+            
+            // Jika user batal memilih file
+            if (!file) return;
+
+            // VALIDASI UKURAN: 10MB = 10 * 1024 * 1024 bytes (10.485.760 bytes)
+            if (file.size > 10485760) {
+                alert('Gagal! Ukuran gambar maksimal adalah 10MB.');
+                event.target.value = ''; // Reset input agar file tidak jadi terupload
+                document.getElementById('preview-box').classList.add('hidden'); // Sembunyikan preview
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function() {
                 const output = document.getElementById('preview-img');
@@ -129,7 +145,7 @@
                 output.src = reader.result;
                 box.classList.remove('hidden');
             };
-            reader.readAsDataURL(event.target.files[0]);
+            reader.readAsDataURL(file);
         }
     </script>
 </body>

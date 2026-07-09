@@ -16,7 +16,6 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
-        // Query Data: Hanya ambil yang statusnya PAID (Sudah Bayar)
         $query = Order::where('status', 'Paid')
             ->whereDate('created_at', '>=', $startDate)
             ->whereDate('created_at', '<=', $endDate)
@@ -26,7 +25,7 @@ class ReportController extends Controller
 
         // Hitung Ringkasan
         $totalRevenue = $orders->sum('total_price');
-        $totalItemsSold = $orders->sum('quantity'); // Asumsi kolom quantity ada di tabel order
+        $totalItemsSold = $orders->sum('quantity'); 
 
         return view('admin.reports.index', compact('orders', 'startDate', 'endDate', 'totalRevenue', 'totalItemsSold'));
     }

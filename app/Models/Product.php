@@ -19,7 +19,7 @@ class Product extends Model
         'image',
     ];
 
-    // 2. TAMBAHKAN INI: Agar detail produk bisa mengambil data ulasan
+    // 2. Agar detail produk bisa mengambil data ulasan
     public function reviews()
     {
         // Hubungkan ke Model Review (Pastikan Model Review sudah ada)

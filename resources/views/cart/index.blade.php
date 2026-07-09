@@ -150,6 +150,7 @@
             </div>
         @endif
 
+
         <div class="bg-white rounded-lg shadow-lg overflow-hidden p-6">
             <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
                 <span>🛒</span> Keranjang Belanja
@@ -204,7 +205,36 @@
                                         </div>
                                     </td>
                                     <td class="py-4 px-4">Rp {{ number_format($cart->product->price) }}</td>
-                                    <td class="py-4 px-4 font-bold">{{ $cart->quantity }}</td>
+                                    <td class="py-4 px-4">
+                                        <div class="flex items-center gap-3">
+                                            <form action="{{ route('cart.update', $cart->id) }}" method="POST">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="action" value="decrease">
+                                                <button type="submit"
+                                                    class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-700 font-bold hover:bg-gray-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    {{ $cart->quantity <= 1 ? 'disabled' : '' }} title="Kurangi">
+                                                    -
+                                                </button>
+                                            </form>
+
+                                            <span class="font-bold text-gray-800 w-4 text-center">
+                                                {{ $cart->quantity }}
+                                            </span>
+
+                                            <form action="{{ route('cart.update', $cart->id) }}" method="POST">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="action" value="increase">
+                                                <button type="submit"
+                                                    class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-700 font-bold hover:bg-gray-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    {{ $cart->quantity >= $cart->product->stock ? 'disabled' : '' }}
+                                                    title="Tambah">
+                                                    +
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                     <td class="py-4 px-4 font-bold text-blue-600">
                                         Rp {{ number_format($cart->product->price * $cart->quantity) }}
                                     </td>

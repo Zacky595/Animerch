@@ -179,17 +179,35 @@
             @if ($products->isNotEmpty())
                 <div class="swiper mySwiper rounded-2xl overflow-hidden h-64 md:h-96 shadow-2xl border-4 border-white">
                     <div class="swiper-wrapper">
-                        @foreach ($products->take(3) as $product)
-                            <div class="swiper-slide relative">
-                                <img src="{{ asset('storage/' . $product->image) }}"
-                                    class="w-full h-full object-cover">
-                                <div
-                                    class="absolute bottom-0 left-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent text-white p-8 w-full">
-                                    <h3 class="text-3xl font-extrabold drop-shadow-md">{{ $product->name }}</h3>
-                                    <p class="text-yellow-400 font-bold text-xl mt-1 drop-shadow-sm">Rp
-                                        {{ number_format($product->price) }}
-                                    </p>
-                                </div>
+                        @foreach ($products->where('stock', '>', 0)->take(3) as $product)
+                            <div class="swiper-slide relative group cursor-pointer">
+                                <a href="{{ route('product.show', $product->id) }}" class="block w-full h-full">
+
+                                    <img src="{{ asset('storage/' . $product->image) }}"
+                                        class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+
+                                    <div
+                                        class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent">
+                                    </div>
+
+                                    <div
+                                        class="absolute bottom-0 left-0 p-8 w-full transform transition-transform duration-500 group-hover:-translate-y-2">
+                                        <h3 class="text-3xl font-extrabold text-white drop-shadow-md">
+                                            {{ $product->name }}</h3>
+
+                                        <div class="flex items-center gap-4 mt-2">
+                                            <p class="text-yellow-400 font-bold text-2xl drop-shadow-sm">
+                                                Rp {{ number_format($product->price, 0, ',', '.') }}
+                                            </p>
+
+                                            <span
+                                                class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-orange-500 text-white text-sm font-bold py-1 px-4 rounded-full shadow-lg">
+                                                Lihat Detail &rarr;
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                </a>
                             </div>
                         @endforeach
                     </div>
@@ -341,17 +359,10 @@
                                     </span>
                                 </div>
 
-                                @if ($product->stock > 0)
-                                    <a href="{{ route('product.show', $product->id) }}"
-                                        class="block text-center w-full bg-orange-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-orange-600 transition shadow-md shadow-orange-500/20 transform hover:-translate-y-0.5">
-                                        Detail Barang
-                                    </a>
-                                @else
-                                    <button disabled
-                                        class="block text-center w-full bg-gray-100 text-gray-400 font-bold py-2.5 px-4 rounded-lg cursor-not-allowed border border-gray-200">
-                                        Stok Habis
-                                    </button>
-                                @endif
+                                <a href="{{ route('product.show', $product->id) }}"
+                                    class="block text-center w-full bg-orange-500 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-orange-600 transition shadow-md shadow-orange-500/20 transform hover:-translate-y-0.5">
+                                    Detail Barang
+                                </a>
                             </div>
                         </div>
                     </div>

@@ -9,7 +9,7 @@ class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Mulai Query (Jangan langsung ->get() dulu)
+        // 1. Mulai Query 
         $query = Product::latest();
 
         // 2. LOGIKA FILTER KATEGORI
@@ -38,7 +38,7 @@ class HomeController extends Controller
     public function show($id)
     {
         // Cari produk, kalau gak ada error 404
-        // Kita tambahkan with('reviews') agar ulasan langsung ikut terambil (efisien)
+        // Kita tambahkan with('reviews') agar ulasan langsung ikut terambil
         $product = Product::with('reviews')->findOrFail($id);
 
         return view('detail', compact('product'));

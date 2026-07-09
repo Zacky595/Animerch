@@ -39,8 +39,9 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Penerima</label>
-                            <input type="text" value="{{ Auth::user()->name }}" readonly
-                                class="w-full bg-gray-100 border rounded-lg p-2.5 text-gray-500 cursor-not-allowed">
+                            <input type="text" name="recipient_name" value="{{ Auth::user()->name }}" required
+                                class="w-full bg-white border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 transition"
+                                placeholder="Masukkan nama penerima paket">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap</label>

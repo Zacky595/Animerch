@@ -22,7 +22,7 @@ class ProductController extends Controller
             $query->where('name', 'LIKE', '%'.$search.'%');
         }
 
-        // Ambil data (paginate 10)
+        
         $products = $query->paginate(10);
 
         return view('admin.products.index', compact('products'));
@@ -43,7 +43,6 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'stock' => 'required|integer',
             'description' => 'nullable|string',
-            // UPDATE: Tambah format webp/svg/gif dan naikkan limit ke 10MB
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp,svg|max:10240',
         ]);
 
@@ -84,7 +83,6 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'stock' => 'required|integer',
             'description' => 'nullable|string',
-            // UPDATE: Gambar jadi nullable (opsional) saat edit, format & size diperluas
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,svg|max:10240',
         ]);
 
